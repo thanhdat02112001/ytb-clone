@@ -1,0 +1,77 @@
+version: '3.8'
+services:
+
+  #PHP Service
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    image: laravel-app/php
+    container_name: app
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - ./src:/var/www
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  #Nginx Service
+  webserver:
+    image: nginx:alpine
+    container_name: webserver
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8080:80"
+      # - "443:443"
+    volumes:
+      - ./src:/var/www
+      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+      - ./docker/log/nginx:/var/log/nginx
+    networks:
+      - app-network
+
+  #MySQL Service
+  db:
+    image: mysql:5.7.22
+    container_name: db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: "laravel"
+      MYSQL_ROOT_PASSWORD: "password"
+      MYSQL_USER: "user"
+      MYSQL_PASSWORD: "pass"
+    volumes:
+      - ./docker/mysql:/var/lib/mysql
+      - ./docker/log/mysql:/var/log/mysql
+    networks:
+      - app-network
+
+  #PMA Service
+  pma:
+    image: phpmyadmin/phpmyadmin
+    container_name: pma
+    tty: true
+    ports:
+      - "81:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_ARBITARY: 1
+      PMA_USER: user
+      PMA_PASSWORD: pass
+    restart: unless-stopped
+    networks:
+      - app-network
+    links:
+      - db
+
+#Docker Networks
+networks:
+  app-network:
+    driver: bridge
